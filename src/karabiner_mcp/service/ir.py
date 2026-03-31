@@ -92,6 +92,33 @@ class AppCondition(BaseModel):
         return v
 
 
+class DeviceIdentifiers(BaseModel):
+    """Device identifiers for a device condition."""
+
+    vendor_id: int | None = None
+    product_id: int | None = None
+    location_id: int | None = None
+    is_keyboard: bool | None = None
+    is_pointing_device: bool | None = None
+
+
+class DeviceCondition(BaseModel):
+    """A device_if / device_unless condition."""
+
+    type: str
+    identifiers: list[DeviceIdentifiers]
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
+        """Validate condition type is a supported device variant."""
+        allowed = {"device_if", "device_unless"}
+        if v not in allowed:
+            msg = f"Condition type must be one of {allowed}, got: {v}"
+            raise ValueError(msg)
+        return v
+
+
 class ManipulatorIR(BaseModel):
     """Intermediate representation for a single Karabiner manipulator.
 
@@ -108,7 +135,7 @@ class ManipulatorIR(BaseModel):
     to_if_alone: list[ToKeySpec] = []
     to_if_held_down: list[ToKeySpec] = []
     to_shell_command: str | None = None
-    conditions: list[AppCondition] = []
+    conditions: list[AppCondition | DeviceCondition] = []
     parameters: dict[str, int] = {}
 
     @field_validator("from_key_code")

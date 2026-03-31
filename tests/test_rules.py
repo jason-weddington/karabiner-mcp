@@ -105,6 +105,31 @@ class TestAddRule:
         conditions = new_rule["manipulators"][0]["conditions"]
         assert conditions[0]["type"] == "frontmost_application_if"
 
+    async def test_with_device_condition(
+        self,
+        mock_ctx: AsyncMock,
+        karabiner_env: dict[str, Path],
+    ) -> None:
+        result = await add_rule(
+            description="Ctrl to Cmd on TKL",
+            from_key_code="left_control",
+            to_key_code="left_command",
+            device_if=[{"vendor_id": 1234, "product_id": 5678}],
+            ctx=mock_ctx,
+        )
+        assert "Created and installed" in result
+
+        config = ksvc.read_config(karabiner_env["config_path"])
+        rules = config["profiles"][0]["complex_modifications"]["rules"]
+        new_rule = next(
+            r for r in rules
+            if r["description"] == "Ctrl to Cmd on TKL"
+        )
+        conditions = new_rule["manipulators"][0]["conditions"]
+        assert conditions[0]["type"] == "device_if"
+        assert conditions[0]["identifiers"][0]["vendor_id"] == 1234
+        assert conditions[0]["identifiers"][0]["product_id"] == 5678
+
     async def test_tap_hold(
         self,
         mock_ctx: AsyncMock,
@@ -332,6 +357,61 @@ class TestEditRule:
             ctx=mock_ctx,
         )
         assert "Error" in result
+
+    async def test_edit_adds_device_condition(
+        self,
+        mock_ctx: AsyncMock,
+        karabiner_env: dict[str, Path],
+    ) -> None:
+        result = await edit_rule(
+            description="Caps Lock to Escape",
+            device_if=[
+                {"vendor_id": 1234, "product_id": 5678}
+            ],
+            ctx=mock_ctx,
+        )
+        assert "Updated" in result
+
+        config = ksvc.read_config(karabiner_env["config_path"])
+        rules = config["profiles"][0]["complex_modifications"]["rules"]
+        rule = next(
+            r for r in rules
+            if r["description"] == "Caps Lock to Escape"
+        )
+        conditions = rule["manipulators"][0]["conditions"]
+        assert len(conditions) == 1
+        assert conditions[0]["type"] == "device_if"
+        assert conditions[0]["identifiers"][0]["vendor_id"] == 1234
+
+    async def test_edit_clears_device_condition(
+        self,
+        mock_ctx: AsyncMock,
+        karabiner_env: dict[str, Path],
+    ) -> None:
+        # First add a device condition
+        await edit_rule(
+            description="Caps Lock to Escape",
+            device_if=[
+                {"vendor_id": 1234, "product_id": 5678}
+            ],
+            ctx=mock_ctx,
+        )
+        # Then clear it
+        result = await edit_rule(
+            description="Caps Lock to Escape",
+            device_if=[],
+            ctx=mock_ctx,
+        )
+        assert "Updated" in result
+
+        config = ksvc.read_config(karabiner_env["config_path"])
+        rules = config["profiles"][0]["complex_modifications"]["rules"]
+        rule = next(
+            r for r in rules
+            if r["description"] == "Caps Lock to Escape"
+        )
+        conditions = rule["manipulators"][0].get("conditions", [])
+        assert len(conditions) == 0
 
     async def test_edit_adds_app_condition(
         self,

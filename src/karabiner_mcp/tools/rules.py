@@ -7,7 +7,13 @@ from pydantic import Field, ValidationError
 
 from karabiner_mcp.service import karabiner as ksvc
 from karabiner_mcp.service.compiler import ir_to_rule, manipulator_to_ir
-from karabiner_mcp.service.ir import AppCondition, ManipulatorIR, ToKeySpec
+from karabiner_mcp.service.ir import (
+    AppCondition,
+    DeviceCondition,
+    DeviceIdentifiers,
+    ManipulatorIR,
+    ToKeySpec,
+)
 
 
 def _get_paths(ctx: Context | None) -> tuple[Any, Any]:
@@ -250,6 +256,28 @@ def register_rule_tools(mcp: FastMCP) -> None:
                 ),
             ),
         ] = None,
+        device_if: Annotated[
+            list[dict[str, Any]] | None,
+            Field(
+                description=(
+                    "Device identifiers — rule only fires on "
+                    "these devices. Each dict may contain: "
+                    "vendor_id (int), product_id (int), "
+                    "location_id (int), is_keyboard (bool), "
+                    "is_pointing_device (bool)."
+                ),
+            ),
+        ] = None,
+        device_unless: Annotated[
+            list[dict[str, Any]] | None,
+            Field(
+                description=(
+                    "Device identifiers — rule fires on all "
+                    "devices EXCEPT these. Same fields as "
+                    "device_if."
+                ),
+            ),
+        ] = None,
         profile_index: Annotated[
             int | None,
             Field(
@@ -324,7 +352,7 @@ def register_rule_tools(mcp: FastMCP) -> None:
                 )
 
         # Build conditions
-        conditions: list[AppCondition] = []
+        conditions: list[AppCondition | DeviceCondition] = []
         if app_if:
             conditions.append(
                 AppCondition(
@@ -337,6 +365,24 @@ def register_rule_tools(mcp: FastMCP) -> None:
                 AppCondition(
                     type="frontmost_application_unless",
                     bundle_identifiers=app_unless,
+                )
+            )
+        if device_if:
+            conditions.append(
+                DeviceCondition(
+                    type="device_if",
+                    identifiers=[
+                        DeviceIdentifiers(**d) for d in device_if
+                    ],
+                )
+            )
+        if device_unless:
+            conditions.append(
+                DeviceCondition(
+                    type="device_unless",
+                    identifiers=[
+                        DeviceIdentifiers(**d) for d in device_unless
+                    ],
                 )
             )
 
@@ -619,6 +665,24 @@ def register_rule_tools(mcp: FastMCP) -> None:
                 ),
             ),
         ] = None,
+        device_if: Annotated[
+            list[dict[str, Any]] | None,
+            Field(
+                description=(
+                    "New device_if identifiers. None = keep current. "
+                    "Pass [] to clear."
+                ),
+            ),
+        ] = None,
+        device_unless: Annotated[
+            list[dict[str, Any]] | None,
+            Field(
+                description=(
+                    "New device_unless identifiers. "
+                    "None = keep current. Pass [] to clear."
+                ),
+            ),
+        ] = None,
         ctx: Context | None = None,
     ) -> str:
         """Edit an existing rule. Updates both the asset file and
@@ -740,6 +804,43 @@ def register_rule_tools(mcp: FastMCP) -> None:
                     AppCondition(
                         type="frontmost_application_unless",
                         bundle_identifiers=app_unless,
+                    )
+                )
+        if device_if is not None:
+            ir.conditions = [
+                c
+                for c in ir.conditions
+                if not (
+                    isinstance(c, DeviceCondition)
+                    and c.type == "device_if"
+                )
+            ]
+            if device_if:
+                ir.conditions.append(
+                    DeviceCondition(
+                        type="device_if",
+                        identifiers=[
+                            DeviceIdentifiers(**d) for d in device_if
+                        ],
+                    )
+                )
+        if device_unless is not None:
+            ir.conditions = [
+                c
+                for c in ir.conditions
+                if not (
+                    isinstance(c, DeviceCondition)
+                    and c.type == "device_unless"
+                )
+            ]
+            if device_unless:
+                ir.conditions.append(
+                    DeviceCondition(
+                        type="device_unless",
+                        identifiers=[
+                            DeviceIdentifiers(**d)
+                            for d in device_unless
+                        ],
                     )
                 )
 

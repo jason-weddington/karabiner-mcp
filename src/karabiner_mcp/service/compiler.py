@@ -8,6 +8,8 @@ from typing import Any
 from karabiner_mcp.service.ir import (
     AppCondition,
     DecompileResult,
+    DeviceCondition,
+    DeviceIdentifiers,
     ManipulatorIR,
     ToKeySpec,
 )
@@ -53,13 +55,23 @@ def ir_to_manipulator(ir: ManipulatorIR) -> dict[str, Any]:
         ]
 
     if ir.conditions:
-        result["conditions"] = [
-            {
-                "type": cond.type,
-                "bundle_identifiers": list(cond.bundle_identifiers),
-            }
-            for cond in ir.conditions
-        ]
+        cond_list: list[dict[str, Any]] = []
+        for cond in ir.conditions:
+            if isinstance(cond, DeviceCondition):
+                cond_list.append({
+                    "type": cond.type,
+                    "identifiers": [
+                        {k: v for k, v in ident.model_dump().items()
+                         if v is not None}
+                        for ident in cond.identifiers
+                    ],
+                })
+            else:
+                cond_list.append({
+                    "type": cond.type,
+                    "bundle_identifiers": list(cond.bundle_identifiers),
+                })
+        result["conditions"] = cond_list
 
     if ir.parameters:
         result["parameters"] = dict(ir.parameters)
@@ -217,7 +229,7 @@ def manipulator_to_ir(manipulator: dict[str, Any]) -> DecompileResult:
         unsupported_fields.append("to_delayed_action")
 
     # Parse conditions
-    conditions: list[AppCondition] = []
+    conditions: list[AppCondition | DeviceCondition] = []
     for cond in manipulator.get("conditions", []):
         cond_type = cond.get("type", "")
         if cond_type in (
@@ -228,6 +240,16 @@ def manipulator_to_ir(manipulator: dict[str, Any]) -> DecompileResult:
                 AppCondition(
                     type=cond_type,
                     bundle_identifiers=cond.get("bundle_identifiers", []),
+                )
+            )
+        elif cond_type in ("device_if", "device_unless"):
+            raw_ids = cond.get("identifiers", [])
+            conditions.append(
+                DeviceCondition(
+                    type=cond_type,
+                    identifiers=[
+                        DeviceIdentifiers(**ident) for ident in raw_ids
+                    ],
                 )
             )
         else:
