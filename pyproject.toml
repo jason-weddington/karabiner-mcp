@@ -1,0 +1,53 @@
+[project]
+name = "karabiner-mcp"
+version = "0.1.0"
+description = "MCP server for managing Karabiner-Elements keyboard remapping rules"
+requires-python = ">=3.13"
+dependencies = [
+    "fastmcp>=2.0",
+    "pydantic>=2.10",
+]
+
+[project.scripts]
+karabiner-mcp = "karabiner_mcp.__main__:main"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9",
+    "mypy>=1.14",
+    "pytest>=8",
+    "pytest-cov>=6",
+    "pytest-asyncio>=0.25",
+    "pre-commit>=4",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/karabiner_mcp"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "TCH", "RUF",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+packages = ["karabiner_mcp"]
+mypy_path = "src"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--strict-markers -v"
