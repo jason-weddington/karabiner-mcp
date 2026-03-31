@@ -98,8 +98,13 @@ class DeviceIdentifiers(BaseModel):
     vendor_id: int | None = None
     product_id: int | None = None
     location_id: int | None = None
+    device_address: str | None = None
     is_keyboard: bool | None = None
     is_pointing_device: bool | None = None
+    is_game_pad: bool | None = None
+    is_consumer: bool | None = None
+    is_touch_bar: bool | None = None
+    is_built_in_keyboard: bool | None = None
 
 
 class DeviceCondition(BaseModel):
