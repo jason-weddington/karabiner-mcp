@@ -19,23 +19,18 @@ Exposes Karabiner configuration as MCP tools so an LLM can search key codes, lis
 
 ## Installation
 
-Requires Python 3.13+ and [uv](https://docs.astral.sh/uv/).
-
-```bash
-uv sync
-```
-
-## Usage
-
-Register the server in your Claude config (`~/.claude.json`):
+Requires Python 3.13+ and [uv](https://docs.astral.sh/uv/). No need to clone the repo — register the server in your Claude config (`~/.claude.json`) and `uvx` will install it on first run:
 
 ```json
 {
   "mcpServers": {
     "karabiner-mcp": {
       "type": "stdio",
-      "command": "uv",
-      "args": ["run", "--directory", "/path/to/karabiner_mcp", "karabiner-mcp"]
+      "command": "uvx",
+      "args": [
+        "--from", "git+https://github.com/jason-weddington/karabiner-mcp.git",
+        "karabiner-mcp"
+      ]
     }
   }
 }
